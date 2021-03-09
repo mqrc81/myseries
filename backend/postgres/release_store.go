@@ -6,7 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/mqrc81/myseries/myseries"
+	"github.com/mqrc81/myseries/backend/myseries"
 )
 
 type ReleaseStore struct {

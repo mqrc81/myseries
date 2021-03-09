@@ -4,10 +4,12 @@ import (
 	"html/template"
 	"net/http"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/gorilla/csrf"
 
-	"github.com/mqrc81/myseries/myseries"
+	"github.com/mqrc81/myseries/backend/myseries"
 )
 
 var (
@@ -20,23 +22,38 @@ func init() {
 	// Templates["home"] = template.Must(template.ParseFiles(layout, path+"home.html"))
 }
 
-func NewHandler(store myseries.Store) *Handler {
+func NewHandler(store myseries.Store, sessions *scs.SessionManager, csrfKey []byte) *Handler {
 
-	handler := &Handler{
-		Mux:   chi.NewMux(),
-		store: store,
+	h := &Handler{
+		Mux:      chi.NewMux(),
+		store:    store,
+		sessions: sessions,
 	}
 
-	handler.Use(middleware.Logger)
+	auth := AuthHandler{store, sessions}
+	series := ShowHandler{store, sessions}
 
-	handler.Get("/", handler.Home())
+	h.Use(middleware.Logger)
+	h.Use(csrf.Protect(csrfKey, csrf.Secure(false)))
+	h.Use(sessions.LoadAndSave)
+	// h.Use(h.withUser)
 
-	return handler
+	h.Get("/", h.Home())
+
+	h.Route("/series", func(r chi.Router) {
+		r.Get("/", series.List())
+		r.Get("/{show_id}", series.Show())
+	})
+
+	h.Post("/login", auth.Login())
+
+	return h
 }
 
 type Handler struct {
 	*chi.Mux
-	store myseries.Store
+	store    myseries.Store
+	sessions *scs.SessionManager
 }
 
 func (h *Handler) Home() http.HandlerFunc {

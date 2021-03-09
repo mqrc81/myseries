@@ -2,10 +2,11 @@ package postgres
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/mqrc81/myseries/myseries"
+	"github.com/mqrc81/myseries/backend/myseries"
 )
 
 type ShowStore struct {
@@ -28,6 +29,22 @@ func (store *ShowStore) GetShow(showID int) (myseries.Show, error) {
 	return show, nil
 }
 
+func (store *ShowStore) GetShows() ([]myseries.Show, error) {
+	var shows []myseries.Show
+
+	query := `
+		SELECT * 
+		FROM shows 
+		ORDER BY rating
+		`
+
+	if err := store.Select(&shows, query); err != nil {
+		return []myseries.Show{}, fmt.Errorf("error getting shows: %w", err)
+	}
+
+	return shows, nil
+}
+
 func (store *ShowStore) GetShowsByUser(userID int) ([]myseries.Show, error) {
 	var shows []myseries.Show
 
@@ -45,18 +62,19 @@ func (store *ShowStore) GetShowsByUser(userID int) ([]myseries.Show, error) {
 	return shows, nil
 }
 
-func (store *ShowStore) GetShowsByGenres(genreID int) ([]myseries.Show, error) {
+func (store *ShowStore) GetShowsByGenreAndDate(genreID int, from time.Time, to time.Time) ([]myseries.Show, error) {
 	var shows []myseries.Show
 
 	query := `
 		SELECT * 
 		FROM shows 
 		    LEFT JOIN shows_genres sg ON shows.show_id = sg.show_id 
-		WHERE sg.genre_id = $1
+		    LEFT JOIN releases r ON shows.show_id = r.show_id 
+		WHERE sg.genre_id = $1 AND r.date BETWEEN $2 AND $3
 		`
 
-	if err := store.Select(&shows, query, genreID); err != nil {
-		return []myseries.Show{}, fmt.Errorf("error getting shows by genre_id: %w", err)
+	if err := store.Select(&shows, query, genreID, from, to); err != nil {
+		return []myseries.Show{}, fmt.Errorf("error getting shows by genre_id and date: %w", err)
 	}
 
 	return shows, nil
@@ -65,7 +83,7 @@ func (store *ShowStore) GetShowsByGenres(genreID int) ([]myseries.Show, error) {
 func (store *ShowStore) CreateShow(show myseries.Show) error {
 
 	query := `
-		INSERT INTO shows(provider_id, name, year, description, poster, seasons, imdb_rating, ended) 
+		INSERT INTO shows(provider_id, name, year, description, poster, seasons, rating, ended) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		`
 
@@ -76,7 +94,7 @@ func (store *ShowStore) CreateShow(show myseries.Show) error {
 		show.Description,
 		show.Poster,
 		show.Seasons,
-		show.IMDBRating,
+		show.Rating,
 		show.SeasonEnded); err != nil {
 		return fmt.Errorf("error creating new show: %w", err)
 	}
@@ -94,7 +112,7 @@ func (store *ShowStore) UpdateShow(show myseries.Show) error {
 		    description = $4, 
 		    poster = $5, 
 		    seasons = $6, 
-		    imdb_rating = $7, 
+		    rating = $7, 
 		    ended = $8 
 		WHERE show_id = $9
 		`
@@ -106,7 +124,7 @@ func (store *ShowStore) UpdateShow(show myseries.Show) error {
 		show.Description,
 		show.Poster,
 		show.Seasons,
-		show.IMDBRating,
+		show.Rating,
 		show.SeasonEnded,
 		show.ShowID); err != nil {
 		return fmt.Errorf("error creating show: %w", err)

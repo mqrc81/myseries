@@ -20,7 +20,7 @@ type Show struct {
 	Description string  `db:"description"`
 	Poster      string  `db:"poster"`
 	Seasons     int     `db:"seasons"`
-	IMDBRating  float64 `db:"imdb_rating"`
+	Rating      float64 `db:"rating"`
 	SeasonEnded bool    `db:"season_ended"`
 	ProviderID  int     `db:"provider_id"`
 }
@@ -62,8 +62,9 @@ type UserStore interface {
 
 type ShowStore interface {
 	GetShow(showID int) (Show, error)
+	GetShows() ([]Show, error)
 	GetShowsByUser(userID int) ([]Show, error)
-	GetShowsByGenres(genreID int) ([]Show, error)
+	GetShowsByGenreAndDate(genreID int, from time.Time, to time.Time) ([]Show, error)
 	CreateShow(show Show) error
 	UpdateShow(show Show) error
 	DeleteShow(showID Show) error

@@ -1,20 +1,19 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	"github.com/go-chi/chi"
 	"github.com/joho/godotenv"
 
-	"github.com/mqrc81/myseries/postgres"
-	"github.com/mqrc81/myseries/web"
+	"github.com/mqrc81/myseries/backend/postgres"
+	"github.com/mqrc81/myseries/backend/web"
 )
 
 func main() {
-	port := ":3000"
 	fmt.Println("Starting application...")
 
 	if err := godotenv.Load(".env"); err != nil {
@@ -30,21 +29,24 @@ func main() {
 	)
 
 	store, err := postgres.NewStore(dataSourceName)
-
 	if err != nil {
 		log.Fatal(err)
 	}
-	chi.NewMux()
 
-	// sessions, err := web.NewSessionManager(dataSourceName)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	sessions, err := web.NewSessionManager(dataSourceName)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	handler := web.NewHandler(store)
+	csrfKey := make([]byte, 32)
+	if _, err = rand.Read(csrfKey); err != nil {
+		log.Fatalf("error generating csrf-key: %v", err)
+	}
 
-	fmt.Println("Listening on " + port)
-	if err := http.ListenAndServe(port, handler); err != nil {
+	handler := web.NewHandler(store, sessions, csrfKey)
+
+	fmt.Println("Listening on " + os.Getenv("PORT"))
+	if err = http.ListenAndServe(":"+os.Getenv("PORT"), handler); err != nil {
 		log.Fatal(err)
 	}
 }
