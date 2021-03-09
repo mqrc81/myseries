@@ -12,14 +12,18 @@ import (
 	"github.com/mqrc81/myseries/backend/myseries"
 )
 
+const (
+	staticPath = "../frontend/static"
+	htmlPath   = "../frontend/html/templates/"
+	layout     = "../frontend/html/layout.html"
+)
+
 var (
-	Templates = make(map[string]*template.Template)
+	homeTemplate *template.Template
 )
 
 func init() {
-	// path := "frontend/templates/"
-	// layout := path + "layout.html"
-	// Templates["home"] = template.Must(template.ParseFiles(layout, path+"home.html"))
+	homeTemplate = template.Must(template.ParseFiles(layout, htmlPath+"home.html"))
 }
 
 func NewHandler(store myseries.Store, sessions *scs.SessionManager, csrfKey []byte) *Handler {
@@ -63,18 +67,14 @@ func (h *Handler) Home() http.HandlerFunc {
 	}
 
 	return func(res http.ResponseWriter, req *http.Request) {
-
 		genres, err := h.store.GetGenres()
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if err := Templates["home"].Execute(res, data{
-			Genres: genres,
-		}); err != nil {
+		if err = homeTemplate.Execute(res, data{Genres: genres}); err != nil {
 			http.Error(res, err.Error(), http.StatusInternalServerError)
-			return
 		}
 	}
 }

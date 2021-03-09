@@ -16,8 +16,10 @@ import (
 func main() {
 	fmt.Println("Starting application...")
 
-	if err := godotenv.Load(".env"); err != nil {
-		log.Fatal(err)
+	if os.Getenv("ENVIRONMENT") != "production" {
+		if err := godotenv.Load(); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	dataSourceName := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
@@ -45,7 +47,7 @@ func main() {
 
 	handler := web.NewHandler(store, sessions, csrfKey)
 
-	fmt.Println("Listening on " + os.Getenv("PORT"))
+	fmt.Println("Listening on port " + os.Getenv("PORT"))
 	if err = http.ListenAndServe(":"+os.Getenv("PORT"), handler); err != nil {
 		log.Fatal(err)
 	}
